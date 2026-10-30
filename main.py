@@ -43,9 +43,19 @@ def pseudonymize_email(email, secret_key, domain="example.com", algorithm="sha25
     if not isinstance(domain, str) or not domain:
         raise ValueError("Domain must be a non-empty string.")
 
+    # A string with no @ is not an email address; hashing it anyway used
+    # to produce a plausible looking pseudonym for garbage input.
+    email = email.strip()
+    if email.count("@") != 1 or not all(email.split("@")):
+        raise ValueError("Email must contain exactly one @ with text on both sides.")
+
     try:
         # Sanitize input to prevent injection attacks (e.g., if used in SQL queries later)
-        email = email.strip()
+        # Lowercasing is load bearing, not cosmetic: the promise of this
+        # tool is that one address always maps to one pseudonym, and mail
+        # addresses are compared case-insensitively in practice, so
+        # Test@Example.com and test@example.com must hash identically.
+        email = email.strip().lower()
         secret_key = secret_key.strip()
         domain = domain.strip()
         salt = salt.strip()
