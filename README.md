@@ -1,3 +1,5 @@
+![Banner](banner.png)
+
 # dm-pseudonymize-email
 Replaces email addresses in a dataset with consistent, but fake, email addresses to preserve uniqueness without revealing actual addresses. Uses a deterministic hash based on the original email and a secret key. - Focused on Tools designed to generate or mask sensitive data with realistic-looking but meaningless values
 
