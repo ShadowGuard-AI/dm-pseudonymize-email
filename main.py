@@ -13,6 +13,10 @@ def setup_argparse():
     """
     parser = argparse.ArgumentParser(description="Pseudonymize email addresses in a dataset.")
     parser.add_argument("email", help="The email address to pseudonymize.")
+    # The key arrives as a command line argument because this tool takes
+    # one address at a time. That puts the key in shell history and in the
+    # process list while the run lasts. I note the exposure here because
+    # the help text only says to keep it safe, not where it leaks.
     parser.add_argument("--secret_key", required=True, help="A secret key used to generate the pseudonym. Keep this safe!")
     parser.add_argument("--domain", default="example.com", help="The domain to use for the pseudonymized email address. Defaults to example.com.")
     parser.add_argument("--algorithm", default="sha256", choices=['sha256', 'sha512', 'md5'], help="Hashing algorithm to use. Defaults to sha256.  sha256/512 are stronger, MD5 is faster.")
@@ -60,7 +64,15 @@ def pseudonymize_email(email, secret_key, domain="example.com", algorithm="sha25
         domain = domain.strip()
         salt = salt.strip()
 
-        # Combine email, salt, and secret key for hashing
+        # The three pieces are joined with no separator, and I know what
+        # that costs: the boundary between them is lost, so different
+        # splits of the same characters hash identically. An email ending
+        # in one letter with a salt starting with another can collide with
+        # a different email and a different salt. The strips above widen
+        # that a little further: a secret key with trailing spaces is the
+        # same key as without them. A delimiter, or hashing the pieces in
+        # a fixed structure, would close it; I leave the plain joining
+        # visible here rather than dress it up.
         combined_string = email + salt + secret_key
 
         # Choose hashing algorithm
@@ -73,7 +85,14 @@ def pseudonymize_email(email, secret_key, domain="example.com", algorithm="sha25
         else:
             raise ValueError("Invalid hashing algorithm specified.")
 
-        # Create the pseudonymized email address
+        # Only the first 16 hex characters survive, which is 64 bits of
+        # whichever hash was chosen: picking sha512 over md5 changes
+        # nothing about the strength of the pseudonym itself, because the
+        # rest is thrown away. Sixty four bits also puts collisions within
+        # reach of a large dataset by birthday arithmetic, so two different
+        # addresses sharing a pseudonym is a matter of scale, not bad luck.
+        # The domain, unlike the email, is never lowercased, so its case
+        # comes through exactly as typed.
         pseudonymized_email = f"{hashed_email[:16]}@{domain}" # use first 16 charaters of the hash to create a valid name.
         return pseudonymized_email
 
